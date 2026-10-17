@@ -6,7 +6,6 @@ import {
   weekdayLabel,
   localDateStr,
   recentWeekStarts,
-  isCurrentWeek,
   weekRangeLabel,
 } from '../lib/weeks';
 
@@ -61,7 +60,7 @@ export default function useStreaks(user) {
   const workoutsByDate = useMemo(() => {
     const map = new Map();
     for (const w of workouts) {
-      const day = typeof w.workout_date === 'string' ? w.workout_date : w.workout_date;
+      const day = w.workout_date;
       map.set(day, w);
     }
     return map;

@@ -20,7 +20,7 @@ import WeeklySummary from './components/WeeklySummary';
 import Streaks from './components/Streaks';
 import AuthScreen from './components/AuthScreen';
 import useEntries from './hooks/useEntries';
-import useAuth from './hooks/useAuth';
+import { useAuth } from './hooks/useAuth';
 import useStreaks from './hooks/useStreaks';
 import brand from './brand';
 

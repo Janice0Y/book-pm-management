@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
@@ -60,7 +60,7 @@ export default function Streaks({ streaks, onLogWorkout }) {
   const goalMet = target !== null && completed >= target;
 
   // Generate an encouraging message whenever the inputs change.
-  React.useEffect(() => {
+  useEffect(() => {
     setEncouragement(
       generateEncouragement({ target, completed, streak, justLogged })
     );
