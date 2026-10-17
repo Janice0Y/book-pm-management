@@ -10,18 +10,13 @@ import Typography from '@mui/material/Typography';
 import SettingsIcon from '@mui/icons-material/Settings';
 import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 import DatasetIcon from '@mui/icons-material/Dataset';
-import LogoutIcon from '@mui/icons-material/Logout';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import Nav from './components/Nav';
 import Dashboard from './components/Dashboard';
 import LogForm from './components/LogForm';
 import History from './components/History';
 import WeeklySummary from './components/WeeklySummary';
-import Streaks from './components/Streaks';
-import AuthScreen from './components/AuthScreen';
 import useEntries from './hooks/useEntries';
-import { useAuth } from './hooks/useAuth';
-import useStreaks from './hooks/useStreaks';
 import brand from './brand';
 
 /**
@@ -31,9 +26,7 @@ import brand from './brand';
  */
 export default function App() {
   const { entries, add, update, remove, clearAll, loadSampleData } = useEntries();
-  const { user, signOut } = useAuth();
-  const streaks = useStreaks(user);
-  const [view, setView] = useState(0); // 0=Dashboard, 1=Log, 2=History, 3=Summary, 4=Streaks
+  const [view, setView] = useState(0); // 0=Dashboard, 1=Log, 2=History, 3=Summary
   const [editEntry, setEditEntry] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
@@ -88,27 +81,22 @@ export default function App() {
     >
       <Nav view={view} onChangeView={setView} />
 
-      {/* Settings + sign-out buttons */}
-      <Box sx={{ position: 'fixed', top: isMobile ? 12 : 14, right: 16, zIndex: 1200, display: 'flex', gap: 0.5 }}>
-        {user && (
-          <IconButton
-            onClick={signOut}
-            aria-label="Sign out"
-            id="signout-button"
-            sx={{ color: 'text.secondary', '&:hover': { color: 'primary.light' } }}
-          >
-            <LogoutIcon />
-          </IconButton>
-        )}
-        <IconButton
-          onClick={() => setSettingsOpen(true)}
-          aria-label="Settings"
-          id="settings-button"
-          sx={{ color: 'text.secondary', '&:hover': { color: 'primary.light' } }}
-        >
-          <SettingsIcon />
-        </IconButton>
-      </Box>
+      {/* Settings button */}
+      <IconButton
+        onClick={() => setSettingsOpen(true)}
+        aria-label="Settings"
+        id="settings-button"
+        sx={{
+          position: 'fixed',
+          top: isMobile ? 12 : 14,
+          right: 16,
+          zIndex: 1200,
+          color: 'text.secondary',
+          '&:hover': { color: 'primary.light' },
+        }}
+      >
+        <SettingsIcon />
+      </IconButton>
 
       {/* Main content */}
       <Box sx={{ flex: 1 }}>
@@ -134,9 +122,6 @@ export default function App() {
           />
         )}
         {view === 3 && <WeeklySummary />}
-        {view === 4 && (
-          user ? <Streaks streaks={streaks} /> : <AuthScreen />
-        )}
       </Box>
 
       <Box component="footer" sx={{ py: 2, px: 3, textAlign: 'center', color: 'text.secondary', borderTop: 1, borderColor: 'divider', fontSize: '0.85rem' }}>

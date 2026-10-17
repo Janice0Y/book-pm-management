@@ -11,7 +11,6 @@ import '@fontsource/inter/500.css';
 import '@fontsource/inter/600.css';
 import theme from './theme';
 import brand from './brand';
-import { AuthProvider } from './hooks/useAuth';
 import App from './App';
 
 // Tab title follows the active brand (Pulse by default).
@@ -21,9 +20,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <AuthProvider>
-        <App />
-      </AuthProvider>
+      <App />
     </ThemeProvider>
   </React.StrictMode>
 );
