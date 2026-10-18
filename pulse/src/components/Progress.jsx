@@ -375,6 +375,26 @@ export default function Progress({ workouts, goal, history, currentStreak, longe
         </CardContent>
       </Card>
 
+      {/* Prominent quick-log action, right under the streak summary */}
+      <Button
+        variant="contained"
+        size="large"
+        fullWidth
+        startIcon={<FitnessCenterIcon />}
+        onClick={onAddWorkout}
+        id="progress-quick-log-button"
+        sx={{
+          mb: 2,
+          py: 1.5,
+          fontSize: '1rem',
+          fontFamily: '"Space Grotesk", sans-serif',
+          letterSpacing: '0.04em',
+          boxShadow: `0 0 20px rgba(${tokens.accentBrightRGB},0.30)`,
+        }}
+      >
+        + Log Workout
+      </Button>
+
       <Grid container spacing={2}>
         {/* Progress ring + message */}
         <Grid size={{ xs: 12, md: 6 }}>

@@ -17,8 +17,9 @@ import LogForm from './components/LogForm';
 import History from './components/History';
 import WeeklySummary from './components/WeeklySummary';
 import Progress from './components/Progress';
+import LogWorkoutModal from './components/LogWorkoutModal';
 import useEntries from './hooks/useEntries';
-import useWorkouts from './hooks/useWorkouts';
+import useWorkouts, { weekKey } from './hooks/useWorkouts';
 import brand from './brand';
 
 /**
@@ -33,7 +34,19 @@ export default function App() {
   const [editEntry, setEditEntry] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [logWorkoutOpen, setLogWorkoutOpen] = useState(false);
   const isMobile = useMediaQuery('(max-width:600px)');
+
+  // Distinct workout days in the current week — used by the log modal to
+  // decide whether the just-saved workout completes the weekly goal.
+  const currentWeekCompleted = (() => {
+    const wk = weekKey(new Date());
+    const days = new Set();
+    workouts.forEach((w) => {
+      if (weekKey(w.timestamp) === wk) days.add(new Date(w.timestamp).toLocaleDateString('en-CA'));
+    });
+    return days.size;
+  })();
 
   // Handle log form submit (add or update)
   const handleLogSubmit = useCallback((entry) => {
@@ -132,7 +145,7 @@ export default function App() {
             history={history}
             currentStreak={currentStreak}
             longestStreak={longestStreak}
-            onAddWorkout={() => { setEditEntry(null); setView(5); }}
+            onAddWorkout={() => { setEditEntry(null); setLogWorkoutOpen(true); }}
             onRemoveWorkout={removeWorkout}
             onSetGoal={setWeeklyGoal}
           />
@@ -223,6 +236,15 @@ export default function App() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Quick log-workout modal (opened from the Progress tab) */}
+      <LogWorkoutModal
+        open={logWorkoutOpen}
+        goal={goal}
+        currentCompleted={currentWeekCompleted}
+        onAddWorkout={(entry) => { addWorkout(entry); }}
+        onClose={() => setLogWorkoutOpen(false)}
+      />
     </Box>
   );
 }
