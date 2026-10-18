@@ -13,6 +13,7 @@ import RestaurantIcon from '@mui/icons-material/Restaurant';
 import DirectionsWalkIcon from '@mui/icons-material/DirectionsWalk';
 import WaterDropIcon from '@mui/icons-material/WaterDrop';
 import BedtimeIcon from '@mui/icons-material/Bedtime';
+import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 import CheckIcon from '@mui/icons-material/Check';
 import { tokens } from '../theme';
 
@@ -32,8 +33,8 @@ const WATER_PRESETS = [250, 350, 500, 750];
  *   editEntry   – if provided, the form pre-fills for editing
  *   onCancel    – called when editing is cancelled
  */
-export default function LogForm({ onSubmit, editEntry = null, onCancel }) {
-  const [type, setType] = useState('food');
+export default function LogForm({ onSubmit, editEntry = null, onCancel, isWorkout = false }) {
+  const [type, setType] = useState(isWorkout ? 'workout' : 'food');
   const [value, setValue] = useState('');
   const [note, setNote] = useState('');
   const [datetime, setDatetime] = useState('');
@@ -43,7 +44,7 @@ export default function LogForm({ onSubmit, editEntry = null, onCancel }) {
   useEffect(() => {
     if (editEntry) {
       setType(editEntry.type);
-      setValue(String(editEntry.value));
+      setValue(editEntry.value != null ? String(editEntry.value) : (editEntry.duration != null ? String(editEntry.duration) : ''));
       setNote(editEntry.note || '');
       // Convert ISO to datetime-local format
       const d = new Date(editEntry.timestamp);
@@ -60,6 +61,7 @@ export default function LogForm({ onSubmit, editEntry = null, onCancel }) {
     setValue('');
     setNote('');
     setSubmitted(false);
+    if (isWorkout) setType('workout');
     // Default datetime to now in local timezone
     const now = new Date();
     const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
@@ -77,6 +79,20 @@ export default function LogForm({ onSubmit, editEntry = null, onCancel }) {
 
   function handleSubmit(e) {
     e.preventDefault();
+    if (isWorkout) {
+      const numDuration = value ? parseFloat(value) : null;
+      const entry = {
+        type: 'workout',
+        duration: numDuration,
+        note: note.trim(),
+        timestamp: new Date(datetime).toISOString(),
+      };
+      if (editEntry) entry.id = editEntry.id;
+      onSubmit(entry);
+      setSubmitted(true);
+      setTimeout(() => { resetForm(); }, 1200);
+      return;
+    }
     const numValue = parseFloat(value);
     if (isNaN(numValue) || numValue <= 0) return;
 
@@ -109,13 +125,14 @@ export default function LogForm({ onSubmit, editEntry = null, onCancel }) {
 
   return (
     <Box sx={{ maxWidth: 520, mx: 'auto', px: 2, py: 3 }}>
-      <Typography variant="h5" sx={{ mb: 3, fontSize: '1.2rem' }}>
-        {editEntry ? 'Edit Entry' : 'Log Entry'}
+      <Typography variant="h5" sx={{ mb: 3, fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: 1 }}>
+        {isWorkout ? <FitnessCenterIcon sx={{ color: 'primary.light' }} /> : null}
+        {editEntry ? 'Edit Entry' : isWorkout ? 'Log Workout' : 'Log Entry'}
       </Typography>
 
       <Card>
         <CardContent component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-          {/* Type selector */}
+          {!isWorkout && (
           <Box>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
               Type
@@ -152,9 +169,10 @@ export default function LogForm({ onSubmit, editEntry = null, onCancel }) {
               ))}
             </ToggleButtonGroup>
           </Box>
+          )}
 
           {/* Water quick presets */}
-          {type === 'water' && (
+          {!isWorkout && type === 'water' && (
             <Box>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                 Quick presets
@@ -177,23 +195,23 @@ export default function LogForm({ onSubmit, editEntry = null, onCancel }) {
 
           {/* Value input */}
           <TextField
-            label={`Value (${currentType.unit})`}
+            label={isWorkout ? 'Duration in minutes (optional)' : `Value (${currentType.unit})`}
             type="number"
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder={currentType.placeholder}
-            required
+            placeholder={isWorkout ? 'e.g. 30' : currentType.placeholder}
+            required={!isWorkout}
             fullWidth
-            inputProps={{ min: 0, step: type === 'sleep' ? 0.1 : 1 }}
+            inputProps={{ min: 0, step: isWorkout ? 5 : (type === 'sleep' ? 0.1 : 1) }}
             id="log-value-input"
           />
 
           {/* Note input (most useful for food) */}
           <TextField
-            label="Note (optional)"
+            label={isWorkout ? 'What did you do? (optional)' : 'Note (optional)'}
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder={type === 'food' ? 'e.g. Grilled chicken salad' : 'Optional note'}
+            placeholder={isWorkout ? 'e.g. Run, weights, yoga' : (type === 'food' ? 'e.g. Grilled chicken salad' : 'Optional note')}
             fullWidth
             id="log-note-input"
           />
@@ -222,9 +240,9 @@ export default function LogForm({ onSubmit, editEntry = null, onCancel }) {
               startIcon={submitted ? <CheckIcon /> : null}
               id="log-submit-button"
             >
-              {submitted ? 'Logged!' : editEntry ? 'Save changes' : 'Log entry'}
+              {submitted ? 'Logged!' : editEntry ? 'Save changes' : isWorkout ? 'Log workout' : 'Log entry'}
             </Button>
-            {editEntry && onCancel && (
+            {(editEntry || isWorkout) && onCancel && (
               <Button
                 variant="outlined"
                 size="large"

@@ -16,7 +16,9 @@ import Dashboard from './components/Dashboard';
 import LogForm from './components/LogForm';
 import History from './components/History';
 import WeeklySummary from './components/WeeklySummary';
+import Progress from './components/Progress';
 import useEntries from './hooks/useEntries';
+import useWorkouts from './hooks/useWorkouts';
 import brand from './brand';
 
 /**
@@ -26,7 +28,8 @@ import brand from './brand';
  */
 export default function App() {
   const { entries, add, update, remove, clearAll, loadSampleData } = useEntries();
-  const [view, setView] = useState(0); // 0=Dashboard, 1=Log, 2=History, 3=Summary
+  const { workouts, goal, history, add: addWorkout, remove: removeWorkout, setWeeklyGoal } = useWorkouts();
+  const [view, setView] = useState(0); // 0=Dashboard, 1=Log, 2=History, 3=Summary, 4=Progress
   const [editEntry, setEditEntry] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
@@ -122,6 +125,23 @@ export default function App() {
           />
         )}
         {view === 3 && <WeeklySummary />}
+        {view === 4 && (
+          <Progress
+            workouts={workouts}
+            goal={goal}
+            history={history}
+            onAddWorkout={() => { setEditEntry(null); setView(5); }}
+            onRemoveWorkout={removeWorkout}
+            onSetGoal={setWeeklyGoal}
+          />
+        )}
+        {view === 5 && (
+          <LogForm
+            onSubmit={(entry) => { addWorkout({ ...entry, type: 'workout' }); setView(4); }}
+            onCancel={() => { setEditEntry(null); setView(4); }}
+            isWorkout
+          />
+        )}
       </Box>
 
       <Box component="footer" sx={{ py: 2, px: 3, textAlign: 'center', color: 'text.secondary', borderTop: 1, borderColor: 'divider', fontSize: '0.85rem' }}>
