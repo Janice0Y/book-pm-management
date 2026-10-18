@@ -28,7 +28,7 @@ import brand from './brand';
  */
 export default function App() {
   const { entries, add, update, remove, clearAll, loadSampleData } = useEntries();
-  const { workouts, goal, history, add: addWorkout, remove: removeWorkout, setWeeklyGoal } = useWorkouts();
+  const { workouts, goal, history, currentStreak, longestStreak, add: addWorkout, remove: removeWorkout, setWeeklyGoal } = useWorkouts();
   const [view, setView] = useState(0); // 0=Dashboard, 1=Log, 2=History, 3=Summary, 4=Progress
   const [editEntry, setEditEntry] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -130,6 +130,8 @@ export default function App() {
             workouts={workouts}
             goal={goal}
             history={history}
+            currentStreak={currentStreak}
+            longestStreak={longestStreak}
             onAddWorkout={() => { setEditEntry(null); setView(5); }}
             onRemoveWorkout={removeWorkout}
             onSetGoal={setWeeklyGoal}

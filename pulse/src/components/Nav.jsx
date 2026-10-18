@@ -67,11 +67,11 @@ export default function Nav({ view, onChangeView }) {
             onChange={(_, v) => onChangeView(v)}
             aria-label="Main navigation"
           >
+            <Tab icon={<EmojiEventsIcon />} iconPosition="start" label="Progress" value={4} id="nav-progress" />
             <Tab icon={<DashboardIcon />} iconPosition="start" label="Dashboard" value={0} id="nav-dashboard" />
             <Tab icon={<AddCircleOutlineIcon />} iconPosition="start" label="Log" value={1} id="nav-log" />
             <Tab icon={<HistoryIcon />} iconPosition="start" label="History" value={2} id="nav-history" />
             <Tab icon={<InsightsIcon />} iconPosition="start" label="Summary" value={3} id="nav-summary" />
-            <Tab icon={<EmojiEventsIcon />} iconPosition="start" label="Progress" value={4} id="nav-progress" />
           </Tabs>
         )}
       </Box>
@@ -90,11 +90,11 @@ export default function Nav({ view, onChangeView }) {
             zIndex: 1100,
           }}
         >
+          <BottomNavigationAction label="Progress" icon={<EmojiEventsIcon />} id="nav-mobile-progress" />
           <BottomNavigationAction label="Dashboard" icon={<DashboardIcon />} id="nav-mobile-dashboard" />
           <BottomNavigationAction label="Log" icon={<AddCircleOutlineIcon />} id="nav-mobile-log" />
           <BottomNavigationAction label="History" icon={<HistoryIcon />} id="nav-mobile-history" />
           <BottomNavigationAction label="Summary" icon={<InsightsIcon />} id="nav-mobile-summary" />
-          <BottomNavigationAction label="Progress" icon={<EmojiEventsIcon />} id="nav-mobile-progress" />
         </BottomNavigation>
       )}
     </>

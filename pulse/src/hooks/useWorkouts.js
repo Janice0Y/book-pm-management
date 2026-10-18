@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
 const WORKOUTS_KEY = 'pulse.workouts';
@@ -131,11 +131,78 @@ export default function useWorkouts() {
     setWeeklyGoal(DEFAULT_GOAL);
   }, [persistWorkouts, setWeeklyGoal]);
 
+  // Streak derivation — uses real archived weeks + the current week.
+  // A "streak week" is any week with at least one distinct workout day.
+  // The current week counts if it has any logged workouts; otherwise the
+  // streak is considered broken (the week is still in progress, so we don't
+  // count an empty current week as part of an ongoing streak, but we also
+  // don't erase history).
+  const streaks = useMemo(() => {
+    const thisWeekStart = weekKey(new Date());
+    const currentHasWorkouts = workouts.some((w) => weekKey(w.timestamp) === thisWeekStart);
+
+    // Build an ordered list of all week starts that had any activity.
+    const activeWeeks = new Set(history.map((h) => h.weekStart));
+    if (currentHasWorkouts) activeWeeks.add(thisWeekStart);
+    const sortedWeeks = [...activeWeeks].sort((a, b) => a.localeCompare(b));
+
+    // Current streak: count back from the most recent active week, requiring
+    // consecutive Mondays. If the current week has no workouts, we start from
+    // the last archived week (the streak may still be "alive" from the user's
+    // perspective until a full empty week passes).
+    const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+    function weeksConsecutive(newerKey, olderKey) {
+      const diff = new Date(newerKey + 'T00:00:00').getTime() - new Date(olderKey + 'T00:00:00').getTime();
+      return diff === ONE_WEEK_MS;
+    }
+
+    let currentStreak = 0;
+    if (sortedWeeks.length > 0) {
+      let cursor = sortedWeeks[sortedWeeks.length - 1];
+      // If the cursor is the current week and it's empty, fall back to the
+      // previous archived week so an in-progress empty week doesn't read as
+      // a broken streak mid-week.
+      if (cursor === thisWeekStart && !currentHasWorkouts && sortedWeeks.length > 1) {
+        cursor = sortedWeeks[sortedWeeks.length - 2];
+      }
+      if (cursor) {
+        currentStreak = 1;
+        for (let i = sortedWeeks.length - 2; i >= 0; i--) {
+          if (weeksConsecutive(cursor, sortedWeeks[i])) {
+            currentStreak += 1;
+            cursor = sortedWeeks[i];
+          } else {
+            break;
+          }
+        }
+      }
+    }
+
+    // Longest streak: scan the full ordered list for the longest run of
+    // consecutive Mondays.
+    let longestStreak = 0;
+    let run = 0;
+    let prevKey = null;
+    sortedWeeks.forEach((k) => {
+      if (prevKey && weeksConsecutive(prevKey, k)) {
+        run += 1;
+      } else {
+        run = 1;
+      }
+      if (run > longestStreak) longestStreak = run;
+      prevKey = k;
+    });
+
+    return { currentStreak, longestStreak };
+  }, [workouts, history]);
+
   return {
     workouts,
     goal,
     history,
     ready,
+    currentStreak: streaks.currentStreak,
+    longestStreak: streaks.longestStreak,
     add,
     remove,
     setWeeklyGoal,

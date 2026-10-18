@@ -22,7 +22,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 import StarIcon from '@mui/icons-material/Star';
 import { tokens } from '../theme';
-import { weekKey, MIN_GOAL, MAX_GOAL } from '../hooks/useWorkouts';
+import { weekKey, mondayOf, MIN_GOAL, MAX_GOAL } from '../hooks/useWorkouts';
 
 const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'];
 function word(n) { return WORDS[n] ?? String(n); }
@@ -112,10 +112,11 @@ function ProgressRing({ completed, goal, size = 120 }) {
   );
 }
 
-export default function Progress({ workouts, goal, history, onAddWorkout, onRemoveWorkout, onSetGoal }) {
+export default function Progress({ workouts, goal, history, currentStreak, longestStreak, onAddWorkout, onRemoveWorkout, onSetGoal }) {
   const [showHistory, setShowHistory] = useState(false);
 
   const thisWeekKey = weekKey(new Date());
+  const weekStart = mondayOf(new Date());
 
   const currentWeek = useMemo(() => workouts.filter((w) => weekKey(w.timestamp) === thisWeekKey), [workouts, thisWeekKey]);
   const distinctDays = useMemo(() => new Set(currentWeek.map((w) => new Date(w.timestamp).toLocaleDateString('en-CA'))).size, [currentWeek]);
@@ -129,6 +130,29 @@ export default function Progress({ workouts, goal, history, onAddWorkout, onRemo
 
   const sortedCurrent = useMemo(() => [...currentWeek].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)), [currentWeek]);
 
+  // Build the 7-day weekly activity strip — Mon..Sun of the current week.
+  const weekDays = useMemo(() => {
+    const days = [];
+    const workoutDayKeys = new Set(currentWeek.map((w) => new Date(w.timestamp).toLocaleDateString('en-CA')));
+    const todayKey = new Date().toLocaleDateString('en-CA');
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(weekStart);
+      d.setDate(d.getDate() + i);
+      const key = d.toLocaleDateString('en-CA');
+      days.push({
+        key,
+        label: d.toLocaleDateString('en-US', { weekday: 'narrow' }).toUpperCase(),
+        dateNum: d.getDate(),
+        done: workoutDayKeys.has(key),
+        isToday: key === todayKey,
+        isFuture: d > new Date() && key !== todayKey,
+      });
+    }
+    return days;
+  }, [currentWeek, weekStart]);
+
+  const streakLabel = currentStreak === 1 ? 'Week Streak' : 'Week Streak';
+
   return (
     <Box sx={{ maxWidth: 900, mx: 'auto', px: 2, py: 3 }}>
       <Typography variant="h5" sx={{ fontSize: '1.2rem', mb: 0.5 }}>
@@ -137,6 +161,180 @@ export default function Progress({ workouts, goal, history, onAddWorkout, onRemo
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         Set a goal, log workouts, and keep your streak going — at your pace.
       </Typography>
+
+      {/* Streak hero — the primary visual focus of the page */}
+      <Card
+        id="progress-streak-hero"
+        sx={{
+          mb: 2,
+          position: 'relative',
+          overflow: 'hidden',
+          borderColor: currentStreak > 0 ? `rgba(${tokens.accentRGB},0.40)` : 'divider',
+          boxShadow: currentStreak > 0
+            ? `0 0 32px rgba(${tokens.accentBrightRGB},0.22)`
+            : `0 0 24px rgba(${tokens.accentBrightRGB},0.10)`,
+          '&::before': currentStreak > 0 ? {
+            content: '""',
+            position: 'absolute',
+            inset: 0,
+            background: `radial-gradient(ellipse at 20% 0%, ${tokens.glowViolet} 0%, transparent 60%)`,
+            pointerEvents: 'none',
+          } : undefined,
+        }}
+      >
+        <CardContent sx={{ py: 4, px: { xs: 3, sm: 4 }, position: 'relative' }}>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { sm: 'center' }, gap: 3, justifyContent: 'space-between' }}>
+            {/* Big streak number */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <LocalFireDepartmentIcon
+                sx={{
+                  fontSize: { xs: 48, sm: 56 },
+                  color: currentStreak > 0 ? '#FF8A3D' : 'text.secondary',
+                  filter: currentStreak > 0 ? 'drop-shadow(0 0 12px rgba(255,138,61,0.5))' : 'none',
+                }}
+              />
+              <Box>
+                <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+                  <Typography
+                    component="span"
+                    id="progress-current-streak"
+                    sx={{
+                      fontFamily: '"Space Grotesk", sans-serif',
+                      fontWeight: 700,
+                      fontSize: { xs: '2.75rem', sm: '3.25rem' },
+                      lineHeight: 1,
+                      color: 'text.primary',
+                      letterSpacing: '0.01em',
+                    }}
+                  >
+                    {currentStreak}
+                  </Typography>
+                  <Typography
+                    component="span"
+                    sx={{
+                      fontFamily: '"Space Grotesk", sans-serif',
+                      fontWeight: 600,
+                      fontSize: { xs: '1.1rem', sm: '1.3rem' },
+                      color: 'text.secondary',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.08em',
+                    }}
+                  >
+                    {streakLabel}
+                  </Typography>
+                </Box>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                  {currentStreak === 0
+                    ? "Log a workout this week to start your streak."
+                    : currentStreak === 1
+                      ? "You're on the board — keep it going next week."
+                      : `${currentStreak} weeks in a row with at least one workout.`}
+                </Typography>
+              </Box>
+            </Box>
+
+            {/* Longest streak + goal chip — secondary stats, visually quieter */}
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography
+                  sx={{
+                    fontFamily: '"Space Grotesk", sans-serif',
+                    fontWeight: 700,
+                    fontSize: '1.5rem',
+                    lineHeight: 1,
+                    color: tokens.violetBright,
+                  }}
+                >
+                  {longestStreak}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.7rem', mt: 0.5, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  Best
+                </Typography>
+              </Box>
+              <Box sx={{ width: 1, height: 40, backgroundColor: 'divider', mx: 0.5 }} />
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography
+                  sx={{
+                    fontFamily: '"Space Grotesk", sans-serif',
+                    fontWeight: 700,
+                    fontSize: '1.5rem',
+                    lineHeight: 1,
+                    color: metGoal ? '#4ADE80' : 'text.primary',
+                  }}
+                >
+                  {completed}/{goal}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.7rem', mt: 0.5, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  This week
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+
+          {/* Weekly activity strip — Mon..Sun, at-a-glance consistency */}
+          <Box sx={{ mt: 4, pt: 3, borderTop: '1px solid', borderColor: 'divider' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                This week
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                {completed} of {goal} goal met
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', gap: 1, justifyContent: 'space-between' }}>
+              {weekDays.map((d) => (
+                <Box
+                  key={d.key}
+                  sx={{
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 0.5,
+                  }}
+                >
+                  <Typography variant="body2" sx={{ fontSize: '0.65rem', color: 'text.secondary', fontWeight: 600, letterSpacing: '0.08em' }}>
+                    {d.label}
+                  </Typography>
+                  <Box
+                    sx={{
+                      width: { xs: 34, sm: 42 },
+                      height: { xs: 34, sm: 42 },
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: d.done
+                        ? '1px solid rgba(74,222,128,0.5)'
+                        : d.isToday
+                          ? `1px solid ${tokens.accentBorder40}`
+                          : '1px solid',
+                      borderColor: d.done ? 'rgba(74,222,128,0.5)' : d.isToday ? tokens.accentBorder40 : 'divider',
+                      backgroundColor: d.done
+                        ? 'rgba(74,222,128,0.16)'
+                        : d.isFuture
+                          ? 'transparent'
+                          : d.isToday
+                            ? tokens.accentDim08
+                            : 'transparent',
+                      color: d.done ? '#4ADE80' : 'text.secondary',
+                      transition: 'all 0.3s ease',
+                    }}
+                  >
+                    {d.done ? (
+                      <FitnessCenterIcon sx={{ fontSize: { xs: 16, sm: 18 } }} />
+                    ) : (
+                      <Typography sx={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                        {d.dateNum}
+                      </Typography>
+                    )}
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        </CardContent>
+      </Card>
 
       <Grid container spacing={2}>
         {/* Progress ring + message */}
