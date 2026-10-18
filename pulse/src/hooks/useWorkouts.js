@@ -80,8 +80,13 @@ export default function useWorkouts() {
       }));
       const merged = [...loadedHistory];
       newSnapshots.forEach((snap) => {
-        if (!merged.some((m) => m.weekStart === snap.weekStart)) {
+        const idx = merged.findIndex((m) => m.weekStart === snap.weekStart);
+        if (idx === -1) {
           merged.push(snap);
+        } else {
+          // Replace with the freshly recomputed snapshot so past-dated logs
+          // update that week's counts and goal status.
+          merged[idx] = snap;
         }
       });
       merged.sort((a, b) => a.weekStart.localeCompare(b.weekStart));
@@ -131,43 +136,72 @@ export default function useWorkouts() {
     setWeeklyGoal(DEFAULT_GOAL);
   }, [persistWorkouts, setWeeklyGoal]);
 
-  // Streak derivation — uses real archived weeks + the current week.
-  // A "streak week" is any week with at least one distinct workout day.
-  // The current week counts if it has any logged workouts; otherwise the
-  // streak is considered broken (the week is still in progress, so we don't
-  // count an empty current week as part of an ongoing streak, but we also
-  // don't erase history).
+  // Streak derivation — a week counts toward a streak ONLY when the user met
+  // or exceeded that week's goal (distinct workout days >= goal). This uses
+  // the stored per-week goal for archived weeks and the live goal for the
+  // current week, so changing the goal doesn't retroactively rewrite history.
+  //
+  // The current week is only added to the streak once its goal is met. Until
+  // then, the streak shows the run of consecutive goal-met weeks ending at the
+  // most recent *completed* week — the user still has time to finish this
+  // week, so we never reset a streak mid-week.
   const streaks = useMemo(() => {
     const thisWeekStart = weekKey(new Date());
-    const currentHasWorkouts = workouts.some((w) => weekKey(w.timestamp) === thisWeekStart);
 
-    // Build an ordered list of all week starts that had any activity.
-    const activeWeeks = new Set(history.map((h) => h.weekStart));
-    if (currentHasWorkouts) activeWeeks.add(thisWeekStart);
-    const sortedWeeks = [...activeWeeks].sort((a, b) => a.localeCompare(b));
+    // Goal-met weeks from archived history (each carries its own stored goal).
+    const goalMetWeeks = new Set(
+      history.filter((h) => h.distinctDays >= h.goal).map((h) => h.weekStart)
+    );
 
-    // Current streak: count back from the most recent active week, requiring
-    // consecutive Mondays. If the current week has no workouts, we start from
-    // the last archived week (the streak may still be "alive" from the user's
-    // perspective until a full empty week passes).
+    // Fold in weeks derived from the live workouts array. This covers the
+    // current week AND any past-dated workouts logged this session that haven't
+    // been archived yet. Group by week and count distinct days.
+    const byWeek = {};
+    workouts.forEach((w) => {
+      const k = weekKey(w.timestamp);
+      if (!byWeek[k]) byWeek[k] = new Set();
+      byWeek[k].add(dayKey(w.timestamp));
+    });
+    Object.entries(byWeek).forEach(([k, days]) => {
+      if (days.size >= goal) goalMetWeeks.add(k);
+      else goalMetWeeks.delete(k); // ensure consistency if a workout was removed
+    });
+
+    const sortedWeeks = [...goalMetWeeks].sort((a, b) => a.localeCompare(b));
     const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
     function weeksConsecutive(newerKey, olderKey) {
       const diff = new Date(newerKey + 'T00:00:00').getTime() - new Date(olderKey + 'T00:00:00').getTime();
       return diff === ONE_WEEK_MS;
     }
+    function priorMondayKey(weekK) {
+      const d = new Date(weekK + 'T00:00:00');
+      d.setDate(d.getDate() - 7);
+      return d.toLocaleDateString('en-CA');
+    }
 
+    // Current streak: if this week met its goal, count the consecutive run
+    // ending here (inclusive). Otherwise, count the run ending at last week —
+    // but only if last week is goal-met; if not, the streak is 0 (it broke).
     let currentStreak = 0;
-    if (sortedWeeks.length > 0) {
-      let cursor = sortedWeeks[sortedWeeks.length - 1];
-      // If the cursor is the current week and it's empty, fall back to the
-      // previous archived week so an in-progress empty week doesn't read as
-      // a broken streak mid-week.
-      if (cursor === thisWeekStart && !currentHasWorkouts && sortedWeeks.length > 1) {
-        cursor = sortedWeeks[sortedWeeks.length - 2];
+    if (goalMetWeeks.has(thisWeekStart)) {
+      currentStreak = 1;
+      let cursor = thisWeekStart;
+      for (let i = sortedWeeks.length - 2; i >= 0; i--) {
+        if (weeksConsecutive(cursor, sortedWeeks[i])) {
+          currentStreak += 1;
+          cursor = sortedWeeks[i];
+        } else {
+          break;
+        }
       }
-      if (cursor) {
+    } else {
+      const lastWeek = priorMondayKey(thisWeekStart);
+      if (goalMetWeeks.has(lastWeek)) {
         currentStreak = 1;
-        for (let i = sortedWeeks.length - 2; i >= 0; i--) {
+        let cursor = lastWeek;
+        // Walk down the sorted list from the lastWeek entry.
+        const startIdx = sortedWeeks.indexOf(lastWeek);
+        for (let i = startIdx - 1; i >= 0; i--) {
           if (weeksConsecutive(cursor, sortedWeeks[i])) {
             currentStreak += 1;
             cursor = sortedWeeks[i];
@@ -178,8 +212,7 @@ export default function useWorkouts() {
       }
     }
 
-    // Longest streak: scan the full ordered list for the longest run of
-    // consecutive Mondays.
+    // Longest streak: longest run of consecutive Mondays among goal-met weeks.
     let longestStreak = 0;
     let run = 0;
     let prevKey = null;
@@ -194,7 +227,7 @@ export default function useWorkouts() {
     });
 
     return { currentStreak, longestStreak };
-  }, [workouts, history]);
+  }, [workouts, history, goal]);
 
   return {
     workouts,

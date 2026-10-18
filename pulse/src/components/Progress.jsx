@@ -151,7 +151,16 @@ export default function Progress({ workouts, goal, history, currentStreak, longe
     return days;
   }, [currentWeek, weekStart]);
 
-  const streakLabel = currentStreak === 1 ? 'Week Streak' : 'Week Streak';
+  const streakLabel = 'Week Streak';
+  const remaining = Math.max(0, goal - completed);
+  const streakSubtitle = metGoal
+    ? (currentStreak === 1
+        ? "Weekly goal achieved! You're on a 1-week streak — keep it going next week."
+        : `Weekly goal achieved! ${currentStreak} weeks in a row of meeting your goal.`)
+    : (completed === 0
+        ? `Log ${goal} ${goal === 1 ? 'workout' : 'workouts'} this week to earn your streak.`
+        : `${completed} of ${goal} workouts completed — ${remaining} more to earn this week's streak.`);
+  const streakActive = currentStreak > 0 && metGoal;
 
   return (
     <Box sx={{ maxWidth: 900, mx: 'auto', px: 2, py: 3 }}>
@@ -169,11 +178,11 @@ export default function Progress({ workouts, goal, history, currentStreak, longe
           mb: 2,
           position: 'relative',
           overflow: 'hidden',
-          borderColor: currentStreak > 0 ? `rgba(${tokens.accentRGB},0.40)` : 'divider',
-          boxShadow: currentStreak > 0
+          borderColor: streakActive ? `rgba(${tokens.accentRGB},0.40)` : 'divider',
+          boxShadow: streakActive
             ? `0 0 32px rgba(${tokens.accentBrightRGB},0.22)`
             : `0 0 24px rgba(${tokens.accentBrightRGB},0.10)`,
-          '&::before': currentStreak > 0 ? {
+          '&::before': streakActive ? {
             content: '""',
             position: 'absolute',
             inset: 0,
@@ -189,8 +198,8 @@ export default function Progress({ workouts, goal, history, currentStreak, longe
               <LocalFireDepartmentIcon
                 sx={{
                   fontSize: { xs: 48, sm: 56 },
-                  color: currentStreak > 0 ? '#FF8A3D' : 'text.secondary',
-                  filter: currentStreak > 0 ? 'drop-shadow(0 0 12px rgba(255,138,61,0.5))' : 'none',
+                  color: streakActive ? '#FF8A3D' : metGoal ? tokens.violetBright : 'text.secondary',
+                  filter: streakActive ? 'drop-shadow(0 0 12px rgba(255,138,61,0.5))' : 'none',
                 }}
               />
               <Box>
@@ -224,12 +233,42 @@ export default function Progress({ workouts, goal, history, currentStreak, longe
                   </Typography>
                 </Box>
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                  {currentStreak === 0
-                    ? "Log a workout this week to start your streak."
-                    : currentStreak === 1
-                      ? "You're on the board — keep it going next week."
-                      : `${currentStreak} weeks in a row with at least one workout.`}
+                  {streakSubtitle}
                 </Typography>
+                <Box sx={{ mt: 1, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                  {metGoal ? (
+                    <Chip
+                      id="progress-streak-status-chip"
+                      icon={<EmojiEventsIcon sx={{ fontSize: 16 }} />}
+                      label="Weekly goal achieved!"
+                      size="small"
+                      sx={{
+                        fontFamily: '"Space Grotesk", sans-serif',
+                        letterSpacing: '0.06em',
+                        color: '#4ADE80',
+                        border: '1px solid rgba(74,222,128,0.5)',
+                        backgroundColor: 'rgba(74,222,128,0.10)',
+                      }}
+                      variant="outlined"
+                    />
+                  ) : (
+                    <Chip
+                      id="progress-streak-status-chip"
+                      icon={<LocalFireDepartmentIcon sx={{ fontSize: 16 }} />}
+                      label="In progress"
+                      size="small"
+                      sx={{
+                        fontFamily: '"Space Grotesk", sans-serif',
+                        letterSpacing: '0.06em',
+                        color: tokens.violetBright,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        backgroundColor: tokens.accentDim08,
+                      }}
+                      variant="outlined"
+                    />
+                  )}
+                </Box>
               </Box>
             </Box>
 
@@ -278,7 +317,7 @@ export default function Progress({ workouts, goal, history, currentStreak, longe
                 This week
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                {completed} of {goal} goal met
+                {metGoal ? `Goal met — ${completed} of ${goal}` : `${completed} of ${goal} goal`}
               </Typography>
             </Box>
             <Box sx={{ display: 'flex', gap: 1, justifyContent: 'space-between' }}>
